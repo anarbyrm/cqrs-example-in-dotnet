@@ -1,0 +1,11 @@
+bin
+obj
+**/bin
+**/obj
+.vs
+.git
+*.md
+docker-compose*.yml
+**/.git
+**/.vs
+**/.DS_Store

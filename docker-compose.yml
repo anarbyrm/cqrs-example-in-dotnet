@@ -7,9 +7,10 @@ services:
       dockerfile: Dockerfile
     image: cqrsexample:local
     ports:
-      - "5000:80"
+      - "5000:8080"
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
       - ConnectionStrings__Postgres=Host=postgres;Port=5432;Database=cqrsdb;Username=postgres;Password=example
       - ConnectionStrings__Mongo=mongodb://mongouser:example@mongo:27017
       - RabbitMQ__Host=rabbitmq

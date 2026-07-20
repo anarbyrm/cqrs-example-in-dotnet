@@ -7,7 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace CqrsExample.Controllers;
 
 [ApiController]
-[Route("products")]
+[Route("api/[controller]")]
 public class ProductsController : ControllerBase
 {
     private readonly IMediator _mediator;
