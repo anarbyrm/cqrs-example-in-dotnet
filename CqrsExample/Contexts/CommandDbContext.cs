@@ -9,4 +9,12 @@ public class CommandDbContext : DbContext
 
     public DbSet<Product> Products { get; set; } = null!;
     public DbSet<Outbox> Outbox { get; set; }
+
+    protected override void OnModelCreating(ModelBuilder modelBuilder)
+    {
+        base.OnModelCreating(modelBuilder);
+
+        modelBuilder.ApplyConfigurationsFromAssembly(
+            typeof(CommandDbContext).Assembly);
+    }
 }
