@@ -26,9 +26,12 @@ public class ProductsController : ControllerBase
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll(CancellationToken cancellationToken)
+    public async Task<IActionResult> GetAll(
+        [FromQuery] int? size,
+        [FromQuery] int? pageNumber,
+        CancellationToken cancellationToken)
     {
-        var products = await _mediator.Send(new GetAllProductsQuery(), cancellationToken);
-        return Ok(products);
+        var result = await _mediator.Send(new GetAllProductsQuery(size, pageNumber), cancellationToken);
+        return Ok(result);
     }
 }

@@ -11,10 +11,8 @@ builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 builder.Services.AddControllers();
 
-builder.Services.AddDbContext<CommandDbContext>(options =>
-{
-    options.UseNpgsql(builder.Configuration.GetConnectionString("Postgres"));
-});
+builder.Services.AddDbContext<CommandDbContext>(options 
+    => options.UseNpgsql(builder.Configuration.GetConnectionString("Postgres")));
 
 builder.Services.AddSingleton<IMongoClient>(sp =>
 {
@@ -22,6 +20,7 @@ builder.Services.AddSingleton<IMongoClient>(sp =>
     return new MongoClient(connectionString);
 });
 
+builder.Services.AddScoped<OutboxRepository>();
 builder.Services.AddScoped<IProductReadRepository, ProductReadRepository>();
 builder.Services.AddScoped<IProductWriteRepository, ProductWriteRepository>();
 
