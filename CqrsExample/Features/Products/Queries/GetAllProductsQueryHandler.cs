@@ -4,9 +4,9 @@ using MediatR;
 
 namespace CqrsExample.Features.Products.Queries;
 
-public record GetAllProductsQuery() : IRequest<ProductListDto>;
+public record GetAllProductsQuery() : IRequest<IEnumerable<ProductListDto>>;
 
-public class GetAllProductsQueryHandler : IRequestHandler<GetAllProductsQuery, ProductListDto>
+public class GetAllProductsQueryHandler : IRequestHandler<GetAllProductsQuery, IEnumerable<ProductListDto>>
 {
     private readonly IProductReadRepository _productReadRepository;
 
@@ -15,10 +15,16 @@ public class GetAllProductsQueryHandler : IRequestHandler<GetAllProductsQuery, P
         _productReadRepository = productReadRepository;
     }
 
-    public async Task<ProductListDto> Handle(GetAllProductsQuery request, CancellationToken cancellationToken)
+    public async Task<IEnumerable<ProductListDto>> Handle(GetAllProductsQuery request, CancellationToken cancellationToken)
     {
         var products = await _productReadRepository.GetProductsAsync(cancellationToken);
-        // TODO: mapping to ProductListDto
-        return new ProductListDto{};
+        
+        return products.Select(p => new ProductListDto
+        {
+            Id = p.Id,
+            Title = p.Title,
+            Description = p.Description,
+            Price = p.Price
+        }).ToList();
     }
 }

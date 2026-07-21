@@ -1,4 +1,5 @@
 using System.Net;
+using CqrsExample.Dtos;
 using CqrsExample.Features.Products.Commands;
 using CqrsExample.Features.Products.Queries;
 using MediatR;
@@ -18,9 +19,9 @@ public class ProductsController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create()
+    public async Task<IActionResult> Create(ProductCreateDto productCreateDto)
     {
-        await _mediator.Send(new CreateProductCommand());
+        await _mediator.Send(new CreateProductCommand(productCreateDto));
         return StatusCode((int)HttpStatusCode.Created);
     }
 

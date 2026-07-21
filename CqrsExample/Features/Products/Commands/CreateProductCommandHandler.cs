@@ -18,9 +18,15 @@ public class CreateProductCommandHandler : IRequestHandler<CreateProductCommand,
 
     public async Task<Unit> Handle(CreateProductCommand request, CancellationToken cancellationToken)
     {
-        // TODO: from dto to entity mapping (request.Product to Product)
-        var product = new Product();
+        var product = new Product
+        {
+            Title = request.Product.Title,
+            Description = request.Product.Description,
+            Price = request.Product.Price
+        };
+
         await _productWriteRepository.CreateProductAsync(product, cancellationToken);
+        
         return Unit.Value;
     }
 }
