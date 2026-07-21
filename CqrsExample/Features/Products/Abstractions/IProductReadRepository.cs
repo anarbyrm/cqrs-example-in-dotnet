@@ -4,5 +4,6 @@ namespace CqrsExample.Features.Products.Abstractions;
 
 public interface IProductReadRepository
 {
-    Task<IEnumerable<Product>> GetProductsAsync(CancellationToken cancellationToken);
+    Task<IEnumerable<Product>> GetProductsAsync(
+        int size, int pageNumber, CancellationToken cancellationToken);
 }

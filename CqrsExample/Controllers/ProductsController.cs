@@ -19,16 +19,16 @@ public class ProductsController : ControllerBase
     }
 
     [HttpPost]
-    public async Task<IActionResult> Create(ProductCreateDto productCreateDto)
+    public async Task<IActionResult> Create(ProductCreateDto productCreateDto, CancellationToken cancellationToken)
     {
-        await _mediator.Send(new CreateProductCommand(productCreateDto));
+        await _mediator.Send(new CreateProductCommand(productCreateDto), cancellationToken);
         return StatusCode((int)HttpStatusCode.Created);
     }
 
     [HttpGet]
-    public async Task<IActionResult> GetAll()
+    public async Task<IActionResult> GetAll(CancellationToken cancellationToken)
     {
-        var products = await _mediator.Send(new GetAllProductsQuery());
+        var products = await _mediator.Send(new GetAllProductsQuery(), cancellationToken);
         return Ok(products);
     }
 }
