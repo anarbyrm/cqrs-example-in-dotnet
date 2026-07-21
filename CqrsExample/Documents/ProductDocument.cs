@@ -1,6 +1,6 @@
-namespace CqrsExample.Dtos;
+namespace CqrsExample.Documents;
 
-public class ProductListDto
+public class ProductDocument
 {
     public int Id { get; set; }
     public string Title { get; set; }
