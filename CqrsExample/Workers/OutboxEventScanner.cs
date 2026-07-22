@@ -1,17 +1,21 @@
 using CqrsExample.Repositories;
+using CqrsExample.Services;
 
 namespace CqrsExample.Workers;
 
 public class OutboxEventScanner : BackgroundService
 {
     private const int TOTAL_EVENT_SIZE = 100;
+    private readonly RabbitmqService _brokerService;
     private readonly IServiceScopeFactory _serviceScopeFactory;
     private readonly ILogger<OutboxEventScanner> _logger;
 
     public OutboxEventScanner(
+        RabbitmqService brokerService,
         IServiceScopeFactory serviceScopeFactory,
         ILogger<OutboxEventScanner> logger)
     {
+        _brokerService = brokerService;
         _serviceScopeFactory = serviceScopeFactory;
         _logger = logger;
     }
@@ -47,7 +51,9 @@ public class OutboxEventScanner : BackgroundService
         {
             try
             {
-                // TODO: publish to broker
+                await _brokerService.PublishEvent(
+                    outboxEvent.EventType, outboxEvent.Payload, ct);
+                
                 await outboxRepository.MarkEventAsProcessedAsync(outboxEvent.Id, ct);
 
             }

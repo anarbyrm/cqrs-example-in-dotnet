@@ -15,15 +15,18 @@ public class CreateProductCommandHandler : IRequestHandler<CreateProductCommand,
     private readonly CommandDbContext _dbContext;
     private readonly IProductWriteRepository _productWriteRepository;
     private readonly OutboxRepository _outboxRepository;
+    private readonly ILogger<CreateProductCommandHandler> _logger;
 
     public CreateProductCommandHandler(
         CommandDbContext dbContext,
         IProductWriteRepository productWriteRepository,
-        OutboxRepository outboxRepository)
+        OutboxRepository outboxRepository,
+        ILogger<CreateProductCommandHandler> logger)
     {
         _dbContext = dbContext;
         _productWriteRepository = productWriteRepository;
         _outboxRepository = outboxRepository;
+        _logger = logger;
     }
 
     public async Task<Unit> Handle(CreateProductCommand request, CancellationToken cancellationToken)
@@ -58,7 +61,7 @@ public class CreateProductCommandHandler : IRequestHandler<CreateProductCommand,
         }
         catch (Exception exc)
         {
-            // TODO: logging
+            _logger.LogError(exc, "Error creating product");
             await transaction.RollbackAsync(cancellationToken);
             throw;
         }
