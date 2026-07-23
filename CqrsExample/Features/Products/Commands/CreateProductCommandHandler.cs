@@ -46,7 +46,7 @@ public class CreateProductCommandHandler : IRequestHandler<CreateProductCommand,
 
             await _productWriteRepository.CreateProductAsync(product, cancellationToken);
 
-            await _outboxRepository.AddOutboxEventAsync(new Outbox
+            await _outboxRepository.AddOutboxEventAsync(new Entities.Outbox
             {
                 EventType = "ProductCreated",
                 Payload = JsonSerializer.Serialize(product),

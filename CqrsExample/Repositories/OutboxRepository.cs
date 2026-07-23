@@ -56,4 +56,19 @@ public class OutboxRepository
                 .SetProperty(o => o.Success, success)
                 .SetProperty(o => o.IsProcessed, success), ct);
     }
+
+    public async Task<(ICollection<Outbox> Events, int TotalCount)> GetEventsAsync(
+        int size, int pageNumber, CancellationToken ct)
+    {
+        var query = _dbContext.Outbox.OrderByDescending(o => o.Id);
+
+        var totalCount = await query.CountAsync(ct);
+
+        var events = await query
+            .Skip((pageNumber - 1) * size)
+            .Take(size)
+            .ToListAsync(ct);
+
+        return (events, totalCount);
+    }
 }
