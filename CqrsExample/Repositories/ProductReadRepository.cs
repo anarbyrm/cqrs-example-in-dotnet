@@ -25,4 +25,15 @@ public class ProductReadRepository : IProductReadRepository
             .Limit(size)
             .ToListAsync(cancellationToken);
     }
+
+    public async Task UpsertProductAsync(ProductDocument product, CancellationToken cancellationToken)
+    {
+        var filter = Builders<ProductDocument>.Filter.Eq(p => p.Id, product.Id);
+
+        await _products.ReplaceOneAsync(
+            filter,
+            product,
+            new ReplaceOptions { IsUpsert = true },
+            cancellationToken);
+    }
 }

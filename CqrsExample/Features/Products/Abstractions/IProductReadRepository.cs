@@ -6,4 +6,6 @@ public interface IProductReadRepository
 {
     Task<IEnumerable<ProductDocument>> GetProductsAsync(
         int size, int pageNumber, CancellationToken cancellationToken);
+
+    Task UpsertProductAsync(ProductDocument product, CancellationToken cancellationToken);
 }
