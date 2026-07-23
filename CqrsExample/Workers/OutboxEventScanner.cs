@@ -6,22 +6,21 @@ namespace CqrsExample.Workers;
 public class OutboxEventScanner : BackgroundService
 {
     private const int TOTAL_EVENT_SIZE = 100;
-    private readonly RabbitmqService _brokerService;
     private readonly IServiceScopeFactory _serviceScopeFactory;
     private readonly ILogger<OutboxEventScanner> _logger;
 
     public OutboxEventScanner(
-        RabbitmqService brokerService,
         IServiceScopeFactory serviceScopeFactory,
         ILogger<OutboxEventScanner> logger)
     {
-        _brokerService = brokerService;
         _serviceScopeFactory = serviceScopeFactory;
         _logger = logger;
     }
 
     protected async override Task ExecuteAsync(CancellationToken ct)
     {
+        _logger.LogInformation("{Worker} started", nameof(OutboxEventScanner));
+
         while (!ct.IsCancellationRequested)
         {
             try
@@ -31,12 +30,17 @@ public class OutboxEventScanner : BackgroundService
                 await Task.Delay(TimeSpan.FromSeconds(10), ct);
 
             }
+            catch (OperationCanceledException) when (ct.IsCancellationRequested)
+            {
+                break;
+            }
             catch (Exception exc)
             {
-                _logger.LogError(exc, "Error processing outbox events");
+                _logger.LogError(exc, "{Worker} failed while processing outbox events", nameof(OutboxEventScanner));
             }
         }
 
+        _logger.LogInformation("{Worker} stopped", nameof(OutboxEventScanner));
     }
 
     private async Task ProcessOutboxEvents(CancellationToken ct)
@@ -44,22 +48,31 @@ public class OutboxEventScanner : BackgroundService
         await using var scope = _serviceScopeFactory.CreateAsyncScope();
 
         var outboxRepository = scope.ServiceProvider.GetRequiredService<OutboxRepository>();
+        var brokerService = scope.ServiceProvider.GetRequiredService<RabbitmqService>();
 
         var outboxEvents = await outboxRepository.FetchUnprocessedEventsAsync(TOTAL_EVENT_SIZE, ct);
+
+        if (outboxEvents.Count == 0)
+        {
+            return;
+        }
+
+        _logger.LogInformation("{Worker} fetched {Count} unprocessed outbox event(s)", nameof(OutboxEventScanner), outboxEvents.Count);
 
         foreach (var outboxEvent in outboxEvents)
         {
             try
             {
-                await _brokerService.PublishEvent(
+                await brokerService.PublishEvent(
                     outboxEvent.EventType, outboxEvent.Payload, ct);
-                
+
                 await outboxRepository.MarkEventAsProcessedAsync(outboxEvent.Id, ct);
 
+                _logger.LogInformation("{Worker} published outbox event {OutboxEventId} of type {EventType}", nameof(OutboxEventScanner), outboxEvent.Id, outboxEvent.EventType);
             }
             catch (Exception exc)
             {
-                _logger.LogError(exc, "Error processing outbox event with id {OutboxEventId}", outboxEvent.Id);
+                _logger.LogError(exc, "{Worker} failed to process outbox event with id {OutboxEventId}", nameof(OutboxEventScanner), outboxEvent.Id);
             }
         }
     }

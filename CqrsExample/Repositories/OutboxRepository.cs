@@ -23,6 +23,7 @@ public class OutboxRepository
     {
         return await _dbContext.Outbox
             .Where(o => !o.IsProcessed)
+            .OrderBy(o => o.Id)
             .Take(count)
             .ToListAsync(ct);
     }
@@ -35,11 +36,12 @@ public class OutboxRepository
     /// <returns></returns>
     public async Task<int> DeleteOldEventsAsync(int count, CancellationToken ct)
     {
-        var toBeDeletedAt = DateTime.Now.AddDays(-7);
+        var toBeDeletedAt = DateTime.UtcNow.AddDays(-7);
 
         return await _dbContext.Outbox
             .Where(o => o.IsProcessed)
             .Where(o => o.CreatedAt <= toBeDeletedAt)
+            .OrderBy(o => o.Id)
             .Take(count)
             .ExecuteDeleteAsync(ct);
     }

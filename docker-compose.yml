@@ -15,9 +15,12 @@ services:
       - ConnectionStrings__Mongo=mongodb://mongouser:example@mongo:27017
       - RabbitMQ__Host=rabbitmq
     depends_on:
-      - postgres
-      - mongo
-      - rabbitmq
+      postgres:
+        condition: service_healthy
+      mongo:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
     networks:
       - app-network
 
@@ -49,7 +52,7 @@ services:
     ports:
       - "27017:27017"
     healthcheck:
-      test: ["CMD", "mongo", "--eval", "db.adminCommand('ping')"]
+      test: ["CMD", "mongosh", "--quiet", "--eval", "db.adminCommand('ping')"]
       interval: 10s
       timeout: 5s
       retries: 5

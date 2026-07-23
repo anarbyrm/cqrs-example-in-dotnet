@@ -15,60 +15,79 @@ public class OutboxEventConsumer : BackgroundService
     private const string QueueName = "outbox-events";
 
     private readonly IServiceScopeFactory _serviceScopeFactory;
-    private readonly IConnection _connection;
-    private readonly RabbitmqOptions _options;
     private readonly ILogger<OutboxEventConsumer> _logger;
+    private IProductReadRepository? _productReadRepository;
+    private IConnection? _connection;
+    private IOptions<RabbitmqOptions>? _options;
     private IChannel? _channel;
 
     public OutboxEventConsumer(
         IServiceScopeFactory serviceScopeFactory,
-        IConnection connection,
-        IOptions<RabbitmqOptions> options,
         ILogger<OutboxEventConsumer> logger)
     {
         _serviceScopeFactory = serviceScopeFactory;
-        _connection = connection;
-        _options = options.Value;
         _logger = logger;
     }
 
     protected override async Task ExecuteAsync(CancellationToken ct)
     {
-        _channel = await _connection.CreateChannelAsync(cancellationToken: ct);
+        _logger.LogInformation("{Worker} starting", nameof(OutboxEventConsumer));
 
-        await _channel.ExchangeDeclareAsync(
-            exchange: _options.ExchangeName,
-            type: ExchangeType.Topic,
-            durable: true,
-            autoDelete: false,
-            arguments: null,
-            cancellationToken: ct);
+        try
+        {
+            await using var scope = _serviceScopeFactory.CreateAsyncScope();
 
-        await _channel.QueueDeclareAsync(
-            queue: QueueName,
-            durable: true,
-            exclusive: false,
-            autoDelete: false,
-            arguments: null,
-            cancellationToken: ct);
+            _productReadRepository = scope.ServiceProvider.GetRequiredService<IProductReadRepository>();
+            _connection = scope.ServiceProvider.GetRequiredService<IConnection>();
+            _options = scope.ServiceProvider.GetRequiredService<IOptions<RabbitmqOptions>>();
 
-        await _channel.QueueBindAsync(
-            queue: QueueName,
-            exchange: _options.ExchangeName,
-            routingKey: "#",
-            arguments: null,
-            cancellationToken: ct);
+            _channel = await _connection.CreateChannelAsync(cancellationToken: ct);
 
-        var consumer = new AsyncEventingBasicConsumer(_channel);
-        consumer.ReceivedAsync += OnMessageReceivedAsync;
+            await _channel.ExchangeDeclareAsync(
+                exchange: _options.Value.ExchangeName,
+                type: ExchangeType.Topic,
+                durable: true,
+                autoDelete: false,
+                arguments: null,
+                cancellationToken: ct);
 
-        await _channel.BasicConsumeAsync(
-            queue: QueueName,
-            autoAck: false,
-            consumer: consumer,
-            cancellationToken: ct);
+            await _channel.QueueDeclareAsync(
+                queue: QueueName,
+                durable: true,
+                exclusive: false,
+                autoDelete: false,
+                arguments: null,
+                cancellationToken: ct);
 
-        await Task.Delay(Timeout.Infinite, ct).ContinueWith(_ => { }, TaskScheduler.Default);
+            await _channel.QueueBindAsync(
+                queue: QueueName,
+                exchange: _options.Value.ExchangeName,
+                routingKey: "#",
+                arguments: null,
+                cancellationToken: ct);
+
+            var consumer = new AsyncEventingBasicConsumer(_channel);
+            consumer.ReceivedAsync += OnMessageReceivedAsync;
+
+            await _channel.BasicConsumeAsync(
+                queue: QueueName,
+                autoAck: false,
+                consumer: consumer,
+                cancellationToken: ct);
+
+            _logger.LogInformation("{Worker} started and consuming queue {QueueName}", nameof(OutboxEventConsumer), QueueName);
+
+            await Task.Delay(Timeout.Infinite, ct).ContinueWith(_ => { }, TaskScheduler.Default);
+        }
+        catch (Exception exc) when (exc is not OperationCanceledException)
+        {
+            _logger.LogError(exc, "{Worker} failed to start", nameof(OutboxEventConsumer));
+            throw;
+        }
+        finally
+        {
+            _logger.LogInformation("{Worker} stopped", nameof(OutboxEventConsumer));
+        }
     }
 
     private async Task OnMessageReceivedAsync(object sender, BasicDeliverEventArgs args)
@@ -82,20 +101,19 @@ public class OutboxEventConsumer : BackgroundService
             await ProcessEventAsync(args.RoutingKey, payload, CancellationToken.None);
 
             await channel.BasicAckAsync(args.DeliveryTag, multiple: false);
+
+            _logger.LogInformation("{Worker} processed message with routing key {RoutingKey}", nameof(OutboxEventConsumer), args.RoutingKey);
         }
         catch (Exception exc)
         {
-            _logger.LogError(exc, "Error processing message with routing key {RoutingKey}", args.RoutingKey);
+            _logger.LogError(exc, "{Worker} failed to process message with routing key {RoutingKey}", nameof(OutboxEventConsumer), args.RoutingKey);
             await channel.BasicNackAsync(args.DeliveryTag, multiple: false, requeue: true);
         }
     }
 
     private async Task ProcessEventAsync(string eventType, string payload, CancellationToken ct)
     {
-        await using var scope = _serviceScopeFactory.CreateAsyncScope();
-
-        var productReadRepository = scope.ServiceProvider
-            .GetRequiredService<IProductReadRepository>();
+        ArgumentNullException.ThrowIfNull(_productReadRepository, nameof(_productReadRepository));
 
         switch (eventType)
         {
@@ -103,7 +121,7 @@ public class OutboxEventConsumer : BackgroundService
                 var product = JsonSerializer.Deserialize<Product>(payload)
                     ?? throw new InvalidOperationException($"Could not deserialize payload for event '{eventType}'");
 
-                await productReadRepository.UpsertProductAsync(new ProductDocument
+                await _productReadRepository.UpsertProductAsync(new ProductDocument
                 {
                     Id = product.Id,
                     Title = product.Title,
@@ -121,6 +139,8 @@ public class OutboxEventConsumer : BackgroundService
 
     public override async Task StopAsync(CancellationToken ct)
     {
+        _logger.LogInformation("{Worker} stopping", nameof(OutboxEventConsumer));
+
         if (_channel is not null)
         {
             await _channel.CloseAsync(ct);
