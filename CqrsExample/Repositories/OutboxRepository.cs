@@ -23,6 +23,7 @@ public class OutboxRepository
     {
         return await _dbContext.Outbox
             .Where(o => !o.IsProcessed)
+            .Where(o => o.ProcessAttempts < 3)
             .OrderBy(o => o.Id)
             .Take(count)
             .ToListAsync(ct);
@@ -46,11 +47,13 @@ public class OutboxRepository
             .ExecuteDeleteAsync(ct);
     }
 
-    public async Task MarkEventAsProcessedAsync(int outboxId, CancellationToken ct)
+    public async Task RecordProcessAttemptAsync(int outboxId, bool success, CancellationToken ct)
     {
         await _dbContext.Outbox
             .Where(o => o.Id == outboxId)
-            .ExecuteUpdateAsync(setter 
-                => setter.SetProperty(o => o.IsProcessed, true), ct);
+            .ExecuteUpdateAsync(setter => setter
+                .SetProperty(o => o.ProcessAttempts, o => o.ProcessAttempts + 1)
+                .SetProperty(o => o.Success, success)
+                .SetProperty(o => o.IsProcessed, success), ct);
     }
 }

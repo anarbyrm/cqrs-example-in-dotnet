@@ -66,13 +66,15 @@ public class OutboxEventScanner : BackgroundService
                 await brokerService.PublishEvent(
                     outboxEvent.EventType, outboxEvent.Payload, ct);
 
-                await outboxRepository.MarkEventAsProcessedAsync(outboxEvent.Id, ct);
+                await outboxRepository.RecordProcessAttemptAsync(outboxEvent.Id, success: true, ct);
 
                 _logger.LogInformation("{Worker} published outbox event {OutboxEventId} of type {EventType}", nameof(OutboxEventScanner), outboxEvent.Id, outboxEvent.EventType);
             }
             catch (Exception exc)
             {
                 _logger.LogError(exc, "{Worker} failed to process outbox event with id {OutboxEventId}", nameof(OutboxEventScanner), outboxEvent.Id);
+
+                await outboxRepository.RecordProcessAttemptAsync(outboxEvent.Id, success: false, ct);
             }
         }
     }
