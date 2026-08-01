@@ -1,6 +1,25 @@
 @CqrsExample_HostAddress = http://localhost:5098
 
-GET {{CqrsExample_HostAddress}}/weatherforecast/
+### Create a product (write side; also enqueues a ProductCreated outbox event)
+POST {{CqrsExample_HostAddress}}/api/products
+Content-Type: application/json
+
+{
+  "title": "Wireless Mouse",
+  "description": "Ergonomic wireless mouse with USB receiver",
+  "price": 19.99
+}
+
+###
+
+### List products (read side, paginated)
+GET {{CqrsExample_HostAddress}}/api/products?size=10&pageNumber=1
+Accept: application/json
+
+###
+
+### Inspect outbox events and their processing status
+GET {{CqrsExample_HostAddress}}/api/outbox?size=10&pageNumber=1
 Accept: application/json
 
 ###
